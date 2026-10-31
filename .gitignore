@@ -1,0 +1,85 @@
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editor and operating system files
+.vscode/
+.idea/
+.DS_Store
+
+# Temporary files
+*.tmp
+*.swp
+*.bak
+
+# Generated logs
+logs/*
+!logs/.gitkeep
+
+# Packet captures: keep large binary captures out of Git
+captures/*
+!captures/.gitkeep
+
+# Generated reports
+reports/
+```
+
+### 5.3 Save and exit
+
+In Nano:
+
+1. Press **Ctrl + O**.
+2. Press **Enter**.
+3. Press **Ctrl + X**.
+
+### 5.4 Keep the empty folders in Git
+
+Git does not track empty directories. We'll add small placeholder files so the `logs/` and `captures/` folders remain visible on GitHub.
+
+Run:
+
+```bash
+touch logs/.gitkeep captures/.gitkeep
+```
+
+### 5.5 Verify everything
+
+Run:
+
+```bash
+cat .gitignore
+```
+
+Then:
+
+```bash
+ls -la
+```
+
+You should see `.gitignore`, `README.md`, your project directories, and the `.git` directory.
+
+**Important:** We'll keep actual packet captures out of Git because they can become large. The `.gitkeep` files will preserve the folders.
+
+---
+
+## Your turn
+
+Complete Step 5 and tell me when it's done.
+
+**Next, we'll make the first Git commit and push your project structure to GitHub.** That will give you a saved, accessible starting point before we begin implementing the network components.
