@@ -1,0 +1,556 @@
+<!DOCTYPE html>");
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>MAC Flooding Detection Dashboard</title>
+
+    <!-- Chart.js for security-event visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #101827;
+            color: #e5e7eb;
+        }
+
+        header {
+            padding: 24px 30px;
+            background: #172235;
+            border-bottom: 1px solid #334155;
+        }
+
+        header h1 {
+            margin: 0 0 8px;
+            font-size: 26px;
+        }
+
+        header p {
+            margin: 0;
+            color: #94a3b8;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: auto;
+            padding: 24px;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            padding: 22px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+        }
+
+        .card h2 {
+            margin: 0 0 14px;
+            font-size: 15px;
+            font-weight: normal;
+            color: #94a3b8;
+        }
+
+        .value {
+            font-size: 27px;
+            font-weight: bold;
+            overflow-wrap: anywhere;
+        }
+
+        .normal {
+            color: #4ade80;
+        }
+
+        .alert {
+            color: #f87171;
+        }
+        
+        .warning {
+          color: #fb923c;
+        }
+        
+
+        .panel {
+            margin-bottom: 24px;
+            padding: 22px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+        }
+
+        .panel h2 {
+            margin-top: 0;
+            font-size: 19px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 320px;
+            width: 100%;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 13px 12px;
+            border-bottom: 1px solid #334155;
+            white-space: nowrap;
+        }
+
+        th {
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        td.details {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 9px;
+            border-radius: 6px;
+            background: #334155;
+            font-size: 12px;
+        }
+
+        .badge-danger {
+            color: #fecaca;
+            background: #7f1d1d;
+        }
+
+        .badge-success {
+            color: #bbf7d0;
+            background: #14532d;
+        }
+
+        #lastUpdated {
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        footer {
+            padding: 20px;
+            text-align: center;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        @media (max-width: 700px) {
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            main {
+                padding: 14px;
+            }
+
+            header {
+                padding: 20px 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>MAC Flooding Detection Dashboard</h1>
+        <p>Real-time monitoring and port-security defense</p>
+    </header>
+
+    <main>
+        <!-- Summary cards -->
+        <section class="cards">
+            <div class="card">
+                <h2>System Status</h2>
+                <div id="systemStatus" class="value">Loading...</div>
+            </div>
+
+            <div class="card">
+                <h2>Blocked Ports</h2>
+                <div id="blockedPorts" class="value">0</div>
+            </div>
+
+            <div class="card">
+                <h2>Total Security Events</h2>
+                <div id="totalEvents" class="value">0</div>
+            </div>
+        </section>
+
+                <!-- Port security information -->
+        <section class="panel">
+            <h2>Port Security</h2>
+            <p id="portDetails">Loading port status...</p>
+        </section>
+
+        <!-- Live Open vSwitch port states -->
+        <section class="panel">
+            <h2>Live Switch Ports</h2>
+            <p>Current port states reported by Open vSwitch.</p>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Switch</th>
+                            <th>Port</th>
+                            <th>Interface</th>
+                            <th>Live State</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="livePortTable">
+                        <tr>
+                            <td colspan="4">Loading live switch ports...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p id="livePortUpdated">Waiting for live switch data...</p>
+        </section>
+
+        <!-- Security events chart -->
+        <section class="panel">
+            <h2>Security Events Overview</h2>
+            <p>Recorded MAC-limit violations, port blocks, and recoveries</p>
+
+            <div class="chart-container">
+                <canvas id="securityChart"></canvas>
+            </div>
+        </section>
+
+        <!-- Security event table -->
+        <section class="panel">
+            <h2>Security Event Log</h2>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time (UTC)</th>
+                            <th>Event</th>
+                            <th>Switch</th>
+                            <th>Port</th>
+                            <th>MAC Address</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="eventTable">
+                        <tr>
+                            <td colspan="6">Loading security events...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p id="lastUpdated">Waiting for data...</p>
+        </section>
+    </main>
+
+    <footer>
+        MAC Flooding Detection &amp; Port-Security Defense Project
+    </footer>
+
+    <script>
+        let securityChart = null;
+
+        async function refreshDashboard() {
+            try {
+                const [statusResponse, eventsResponse] = await Promise.all([
+                    fetch("/api/status"),
+                    fetch("/api/events")
+                ]);
+
+                if (!statusResponse.ok || !eventsResponse.ok) {
+                    throw new Error("Dashboard API request failed");
+                }
+
+                const statusData = await statusResponse.json();
+                const eventsData = await eventsResponse.json();
+
+                // Update system status.
+                const statusElement =
+                    document.getElementById("systemStatus");
+
+                statusElement.textContent = statusData.status;
+
+                          let statusClass = "normal";
+
+          if (statusData.status === "ALERT") {
+              statusClass = "alert";
+          } else if (statusData.status === "RECENT ATTACK DETECTED") {
+              statusClass = "warning";
+          }
+
+          statusElement.className = "value " + statusClass;
+
+                // Update summary statistics.
+                document.getElementById("blockedPorts").textContent =
+                    statusData.blocked_ports.length;
+
+                document.getElementById("totalEvents").textContent =
+                    statusData.total_events;
+
+                // Update blocked-port details.
+                const portDetails =
+                    document.getElementById("portDetails");
+
+                if (statusData.blocked_ports.length === 0) {
+                    portDetails.textContent =
+                        "No ports are currently reported as blocked.";
+                } else {
+                    portDetails.textContent =
+                        statusData.blocked_ports
+                            .map(port =>
+                                `Switch ${port.switch}, Port ${port.port}`
+                            )
+                            .join(" | ");
+                }
+                
+                                // Update live Open vSwitch port states.
+                const livePortTable =
+                    document.getElementById("livePortTable");
+
+                const livePortUpdated =
+                    document.getElementById("livePortUpdated");
+
+                const liveSwitch = statusData.live_switch;
+
+                if (!liveSwitch || !liveSwitch.available) {
+                    livePortTable.innerHTML = `
+                        <tr>
+                            <td colspan="4">
+                                Live switch status unavailable
+                            </td>
+                        </tr>
+                    `;
+
+                    livePortUpdated.textContent =
+                        liveSwitch?.error ||
+                        "No live switch data received.";
+                } else if (liveSwitch.ports.length === 0) {
+                    livePortTable.innerHTML = `
+                        <tr>
+                            <td colspan="4">
+                                No host-facing switch ports found.
+                            </td>
+                        </tr>
+                    `;
+
+                    livePortUpdated.textContent =
+                        "Switch query succeeded, but no ports were detected.";
+                } else {
+                    livePortTable.innerHTML =
+                        liveSwitch.ports.map(port => {
+                            let stateClass = "normal";
+
+                            if (port.status === "ADMIN_DOWN") {
+                                stateClass = "alert";
+                            } else if (port.status === "LINK_DOWN") {
+                                stateClass = "warning";
+                            }
+
+                            return `
+                                <tr>
+                                    <td>${port.switch}</td>
+                                    <td>${port.port}</td>
+                                    <td>${port.name}</td>
+                                    <td>
+                                        <span class="value ${stateClass}">
+                                            ${port.status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join("");
+
+                    livePortUpdated.textContent =
+                        "Live switch data refreshed at " +
+                        new Date().toLocaleTimeString();
+                }
+
+                // Count security-event types.
+                const eventCounts = {
+                    PORT_LIMIT_EXCEEDED: 0,
+                    PORT_BLOCKED: 0,
+                    PORT_RECOVERED: 0
+                };
+
+                eventsData.events.forEach(event => {
+                    if (
+                        Object.prototype.hasOwnProperty.call(
+                            eventCounts,
+                            event.event
+                        )
+                    ) {
+                        eventCounts[event.event]++;
+                    }
+                });
+
+                // Create the chart once.
+                if (!securityChart) {
+                    const chartCanvas =
+                        document.getElementById("securityChart");
+
+                    securityChart = new Chart(chartCanvas, {
+                        type: "bar",
+
+                        data: {
+                            labels: [
+                                "MAC Limit Exceeded",
+                                "Port Blocked",
+                                "Port Recovered"
+                            ],
+
+                            datasets: [{
+                                label: "Recorded Events",
+
+                                data: [
+                                    eventCounts.PORT_LIMIT_EXCEEDED,
+                                    eventCounts.PORT_BLOCKED,
+                                    eventCounts.PORT_RECOVERED
+                                ],
+
+                                backgroundColor: [
+                                    "#f87171",
+                                    "#fb923c",
+                                    "#4ade80"
+                                ],
+
+                                borderWidth: 0
+                            }]
+                        },
+
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+
+                                    ticks: {
+                                        precision: 0,
+                                        color: "#cbd5e1"
+                                    },
+
+                                    grid: {
+                                        color: "#334155"
+                                    }
+                                },
+
+                                x: {
+                                    ticks: {
+                                        color: "#cbd5e1"
+                                    },
+
+                                    grid: {
+                                        display: false
+                                    }
+                                }
+                            },
+
+                            plugins: {
+                                legend: {
+                                    labels: {
+                                        color: "#e5e7eb"
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    // Update existing chart without recreating it.
+                    securityChart.data.datasets[0].data = [
+                        eventCounts.PORT_LIMIT_EXCEEDED,
+                        eventCounts.PORT_BLOCKED,
+                        eventCounts.PORT_RECOVERED
+                    ];
+
+                    securityChart.update("none");
+                }
+
+                // Populate the event table safely.
+                const eventTable =
+                    document.getElementById("eventTable");
+
+                eventTable.replaceChildren();
+
+                if (eventsData.events.length === 0) {
+                    const row = eventTable.insertRow();
+                    const cell = row.insertCell();
+
+                    cell.colSpan = 6;
+                    cell.textContent =
+                        "No security events recorded yet.";
+                } else {
+                    eventsData.events.slice(0, 100).forEach(event => {
+                        const row = eventTable.insertRow();
+
+                        const values = [
+                            event.time_utc || "Unknown",
+                            event.event || "Unknown",
+                            event.switch ?? "—",
+                            event.port ?? "—",
+                            event.mac || "—",
+                            event.details || "—"
+                        ];
+
+                        values.forEach((value, index) => {
+                            const cell = row.insertCell();
+
+                            cell.textContent = value;
+
+                            if (index === 5) {
+                                cell.className = "details";
+                                cell.title = value;
+                            }
+                        });
+                    });
+                }
+
+                document.getElementById("lastUpdated").textContent =
+                    "Last updated: " +
+                    new Date().toLocaleTimeString();
+
+            } catch (error) {
+                document.getElementById("lastUpdated").textContent =
+                    "Unable to load dashboard data. " +
+                    "Check that Flask is running and Chart.js is available.";
+
+                console.error("Dashboard refresh failed:", error);
+            }
+        }
+
+        // Load immediately, then refresh every two seconds.
+        refreshDashboard();
+        setInterval(refreshDashboard, 2000);
+    </script>
+</body>
+</html>
+
